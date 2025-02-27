@@ -1,0 +1,92 @@
+---
+title: "exercise-05"
+author: "Madina"
+format: html
+editor: visual
+---
+
+## Running Code
+
+### **Step 1**
+
+-   Using the {tidyverse} `read_csv()` function, load the “IMDB-movies.csv” dataset from [this URL](https://raw.githubusercontent.com/difiore/ada-datasets/main/IMDB-movies.csv) as a “tibble” named **d**
+
+```{r}
+
+library(tidyverse)
+mv<-read_csv("IMDB-movies.csv", col_names = TRUE)
+mv
+```
+
+### **Step 2**
+
+-   Use a one-line statement to filter the dataset to include just movies from 1920 to 1979 and movies that are between 1 and 3 hours long (**runtimeMinutes** \>= 60 and **runtimeMinutes** \<= 180), and add a new column that codes the **startYear** into a new variable, **decade** (“20s”, “30s”, …“70s”). If you do this correctly, there should be 5651 movies remaining in the dataset.
+
+> **HINT:** Use {dplyr} functions and the pipe operator!
+
+```{r}
+library(dplyr)
+  mv_filt <- mv |> filter(startYear>=1920 & startYear <= 1979) |> filter(runtimeMinutes >=60 & runtimeMinutes <=180) |> 
+    mutate(decade=case_when( startYear >=1920 & startYear < 1930 ~ "20s", 
+                            startYear >= 1930 & startYear < 1940 ~ "30s",
+                            startYear >= 1940 & startYear < 1950 ~ "40s",
+                            startYear >= 1950 & startYear < 1960 ~ "50s",
+                            startYear >= 1960 & startYear < 1970 ~ "60s",
+                            startYear >= 1970 & startYear < 1980 ~ "70s"))
+  
+  mv_filt
+```
+
+### **Step 3**
+
+-   Use {ggplot2} (which is part of {tidyverse}) to plot histograms of the distribution of **runtimeMinutes** for each decade.
+
+> **HINT:** Try using `facet_wrap()` to do this!
+
+```{r}
+ggplot(data=mv_filt, mapping = aes(x=runtimeMinutes))+
+  geom_histogram(binwidth = 4, color = "orange", alpha = 0.7)+
+  labs(x = "Movie Runtime")+
+  facet_wrap(~decade, ncol=2)
+```
+
+### **Step 4**
+
+-   Use a one-line statement to calculate the population mean and population standard deviation in **runtimeMinutes**for each decade and save the results in a new dataframe called **results**.
+
+```{r}
+results<-mv_filt |> group_by(decade) |> summarise(mean=mean(runtimeMinutes),std=sd(runtimeMinutes))
+results
+
+```
+
+### **Step 5**
+
+-   Draw a single sample of 100 movies, without replacement, from each decade and calculate the single sample mean and single sample standard deviation in **runtimeMinutes** for each decades. Recall that your single sample mean for each decade is an *estimate* of the population mean for each decade.
+
+```{r}
+
+result_100<- slice_sample(mv_filt,n = 100,by = decade) |> group_by(decade) |> summarise(estimate=mean(runtimeMinutes),std=sd(runtimeMinutes))
+  
+result_100  
+  
+ 
+```
+
+### **Step 6**
+
+-   Calculate for each decade the standard error around your estimate of the population mean **runtimeMinutes** based on the standard deviation and sample size (n=100 movies) of your single sample.
+
+```{r}
+result_100_se<- slice_sample(mv_filt,n = 100,by = decade) |> group_by(decade) |> summarise(estimate=mean(runtimeMinutes),std=sd(runtimeMinutes), se=std/sqrt(100))
+
+result_100_se
+```
+
+### **Step 7**
+
+-   Compare these estimates to the actual population mean **runtimeMinutes** for each decade and to the calculated SE in the population mean for samples of size 100 based on the population standard deviation for each decade.
+
+```{r}
+
+```
