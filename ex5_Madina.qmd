@@ -87,6 +87,8 @@ result_100_se
 
 -   Compare these estimates to the actual population mean **runtimeMinutes** for each decade and to the calculated SE in the population mean for samples of size 100 based on the population standard deviation for each decade.
 
+actual population mean runtimeMinutes for each decade was saved into 'results' dataframe! for comparison inner joining the two dataframe.
+
 ```{r}
 inner_join(results, result_100_se, by = "decade")
 
@@ -97,11 +99,71 @@ inner_join(results, result_100_se, by = "decade")
 -   Generate a *sampling distribution* of mean **runtimeMinutes** for each decade by \[a\] drawing 1000 random samples of 100 movies from each decade, without replacement, and, for each sample, \[b\] calculating the mean **runtimeMinutes** and the standard deviation in **runtimeMinutes** for each decade. Use either a standard `for( ){ }` loop, the `do(reps) *` formulation from {mosaic}, the `rerun()` function from {purrr}, or the `rep_sample_n()` workflow from {infer} to generate your these sampling distributions (see [**Module 16**](https://difiore.github.io/ada-2025/16-module.html)).
 
 ```{r}
-reps<-1000
-sample_distr_mean<-vector(length=reps)
+library(infer)
+ 
+sample_distr_list <- data.frame()
 
-for (i in 1:reps){
-  m_std_1000<- slice_sample(mv_filt,n = 100,by = decade) |> group_by(decade) |> summarise(estimate=mean(runtimeMinutes),std=sd(runtimeMinutes))
-  sample_distr_mean[[i]] <-mean(sample(d$weight,100,replace=TRUE))
+for (dec in unique(mv_filt$decade)) {
+  decade_data <- mv_filt |> filter(decade == dec)
+  sample_distr <- decade_data |> rep_sample_n(size=100,reps = 1000,replace = FALSE) |> summarise(mean=mean(runtimeMinutes),std=sd(runtimeMinutes))
+#  sample_distr_list[[dec]] <- sample_distr
+
+  sample_distr <- sample_distr |> mutate(decade = dec)
+
+   sample_distr_list <- bind_rows(sample_distr_list, sample_distr)
 }
+
+sample_distr_list
+```
+
+### **Step 9**
+
+-   Then, calculate the **mean** and the **standard deviation** of the sampling distribution of sample means for each decade (the former should be a very good estimate of the population mean, while the latter is another estimate of the standard error in our estimate of the population mean for a particular sample size) and plot a histogram of the sampling distribution for each decade. What shape does it have?
+
+```{r}
+
+mean_std_1000_decade <- sample_distr_list |> group_by(decade) |> 
+  summarise(mean_of_means = mean(mean), std_of_means = sd(mean))
+ 
+mean_std_1000_decade
+
+ggplot(sample_distr_list, aes(x = mean, fill = factor(decade))) +
+  geom_histogram(binwidth = 2, color = "black", alpha = 0.5) +
+  facet_wrap(~decade, ncol = 3) +
+  labs(title = "Sampling Distribution of Mean Runtime by Decade",
+       x = "Mean Runtime (minutes)",
+       y = "Frequency",
+       fill = "Decade")
+```
+
+### **Step 10**
+
+-   Finally, compare the standard error in **runtimeMinutes** for samples of size 100 from each decade \[1\] as estimated from your **first** sample of 100 movies, \[2\] as calculated from the known *population* standard deviations for each decade, and \[3\] as estimated from the sampling distribution of sample means for each decade.
+
+```{r}
+
+result_100_se<-slice_sample(mv_filt,n = 100,by = decade) |> group_by(decade) |> summarise(mean_sample=mean(runtimeMinutes),std_sample=sd(runtimeMinutes), se_sample=std_sample/sqrt(100))
+
+result_100_se
+population<-mv_filt |> group_by(decade) |> summarise(mean=mean(runtimeMinutes),std_pop=sd(runtimeMinutes), se_pop=std_pop/sqrt(length(runtimeMinutes)))
+population
+
+se_sampling_distr <- sample_distr_list |> group_by(decade) |> 
+  summarise(mean_distr = mean(mean), std_distr = sd(mean), se_distr=std_distr/sqrt(length(mean)))
+
+se_sampling_distr
+
+inner_join(result_100_se, population, se_sampling_distr, by = "decade")# |> select(decade, 3,6,9)
+
+final_table <- result_100_se |> 
+  inner_join(population, by = "decade") |> 
+  inner_join(se_sampling_distr, by = "decade") |> 
+  select(decade, 4, 7, 10)
+
+final_table
+
+                                         
+                                          
+                                                     
+                                      
 ```
