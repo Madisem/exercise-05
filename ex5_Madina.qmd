@@ -167,3 +167,139 @@ final_table
                                                      
                                       
 ```
+
+## **Challenge 2**
+
+![](https://difiore.github.io/ada-2025/img/pvz-hand.png)
+
+### **Step 1**
+
+-   Using the {tidyverse} `read_csv()` function, load the “zombies.csv” dataset from [this URL](https://raw.githubusercontent.com/difiore/ada-datasets/main/zombies.csv) as a “tibble” named **z**. This dataset includes the first and last name and gender of the **entire** population of 1000 people who have survived the zombie apocalypse and are now ekeing out an existence somewhere on the Gulf Coast, along with several other variables (height, weight, age, number of years of education, number of zombies they have killed, and college major). 
+
+```{r}
+library(tidyverse)
+z<-read_csv("zombies.csv", col_names = TRUE)
+z
+```
+
+### **Step 2**
+
+-   Calculate the *population* mean and standard deviation for each quantitative random variable in the dataset (height, weight, age, number of zombies killed, and years of education).
+
+> **NOTE:** You will **not** want to use the built in `var()` and `sd()` commands as those are for *samples*.
+
+```{r}
+#pop_mean_std <- data.frame()
+mean_list<-list()
+std_list<-list()
+for (n in c(5:8,10)) {
+ mean_gr = mean(z[[n]], na.rm = TRUE)
+ std_gr = sum(z[[n]] - mean_gr)^2/(length(z[[n]])-1)
+
+# pop_mean_std <- pop_mean_std |>mutate(mean_gr)
+ mean_list[[names(z)[n]]] <- mean_gr  
+ std_list[[names(z)[n]]] <- std_gr  
+#  print(head(z[n]))
+}
+pop_mean_std <- as.data.frame(mean_list)
+pop_mean_std <- bind_rows(pop_mean_std, as.data.frame(std_list))
+
+pop_mean_std
+```
+
+### **Step 3**
+
+-   Use {ggplot} and make boxplots of each of these variables by gender.
+
+    ```{r}
+    library(ggplot2)
+    for (n in c(5:8,10)) {   
+       p<-ggplot(data=z, mapping = aes(x=gender, y=z[[n]]))+
+       geom_boxplot()+
+       geom_jitter(width = 0.2, alpha = 0.6)+
+        labs(title = paste("Boxplot of", names(z)[n], "by Gender"),
+             x = "Gender",
+             y = names(z)[n])
+        print(p)
+    }
+    ```
+
+### **Step 4**
+
+-   Use {ggplot} and make scatterplots of height and weight in relation to age (i.e., use age as the  variable), using different colored points for males versus females. Do these variables seem to be related? In what way?
+
+```{r}
+p<-ggplot(data=z, mapping = aes(x=height, y=age, color = factor(gender)))+
+   geom_point()+xlab("Height") + ylab("Age")
+p
+q<-ggplot(data=z, mapping = aes(x=weight, y=age, color = factor(gender)))+
+   geom_point()+xlab("Weight") + ylab("Age")
+q
+p+q
+```
+
+Age and height are seems to be related, also there differences by the gender. While in weight plot, data is more wider distributed, no significantly related.
+
+### **Step 5**
+
+-   Using histograms and Q-Q plots, check whether each of the quantitative variables seem to be drawn from a normal distribution. Which seem to be and which do not?
+
+> **HINT:** Not all are drawn from a normal distribution! For those that are not, can you determine what common distribution they are drawn from?
+
+```{r}
+ 
+library(stats)
+hist(z$height, col = "white", main = "Distribution",
+    xlab = "Height", ylab = "Frequency")
+qqnorm(z$height, main = "Q-Q Plot of Height")
+qqline(z$height, col = "red", lwd=2)  
+
+hist(z$weight, col = "white", main = "Distribution",
+    xlab = "Weight", ylab = "Frequency")
+qqnorm(z$weight, main = "Q-Q Plot of Weight")
+
+hist(z$age, col = "white", main = "Distribution",
+    xlab = "Age", ylab = "Frequency")
+qqnorm(z$age, main = "Q-Q Plot of Age")
+
+hist(z$zombies_killed, col = "white", main = "Distribution",
+    xlab = "Zombies killed", ylab = "Frequency")
+qqnorm(z$zombies_killed, main = "Q-Q Plot of Zombies Killed")
+
+hist(z$years_of_education, col = "white", main = "Distribution",
+    xlab = "Years of Education", ylab = "Frequency")
+qqnorm(z$years_of_education, main = "Q-Q Plot of Years of Education")
+
+```
+
+The last two histograms on Zombies killed and Years of education are skewed to the left, showing not normal distribution. The Q-Q plot shows, the data does not fall along the line, its aprupted.
+
+### **Step 6**
+
+-   Now use the `sample_n()` or `slice_sample()` function from {dplyr} to sample ONE subset of 50 zombie apocalypse survivors (without replacement) from this population and calculate the mean and sample standard deviation for each variable. Also estimate the standard error for each variable based on this one sample and use that to construct a theoretical 95% confidence interval for each mean. You can use either the standard normal *or* a Student’s t distribution to derive the critical values needed to calculate the lower and upper limits of the CI.
+
+```{r}
+library(dplyr)
+
+subset <- sample_n(z, 50, replace = FALSE)
+subset_stat<-data.frame()
+ for (n in c(5:8,10)) {
+ stat <- subset |> summarise(mean=mean(subset[[n]], na.rm = TRUE), std = sd(subset[[n]], na.rm = TRUE), se=std/sqrt(length(subset[[n]])))
+ ci<-stat$mean+qnorm(c(0.025, 0.975)) * stat$se
+
+  stat <- stat |> mutate(variable = names(z)[n], CI_lower=ci[1], CI_upper=ci[2])
+  subset_stat <- bind_rows(subset_stat, stat)
+ }
+  subset_stat
+
+```
+
+### **Step 7**
+
+-   Then draw another 199 random samples of 50 zombie apocalypse survivors out of the population and calculate the mean for each of the these samples. Together with the first sample you drew out, you now have a set of 200 means for each variable (each of which is based on 50 observations), which constitutes a sampling distribution for each variable. What are the means and standard deviations of the **sampling distribution** for each variable? How do the standard deviations of the sampling distribution for each variable compare to the standard errors estimated from your first sample of size 50?
+
+```{r}
+library(mosaic)
+reps=199
+pop_rep<-do(reps*sample_n(z, 50, replace = FALSE))
+```
